@@ -48,7 +48,7 @@ func echoUpper(w io.Writer, r io.Reader) {
 		// writing to w does not print to the server terminal
 		// it writes to the connection (responding to the client)
 		fmt.Fprintf(w, "%s\n", strings.ToUpper(line))
-		// log the output to the server 
+		// log the output to the server
 		log.Printf("recieved: %s", line)
 	}
 	if err := scanner.Err(); err != nil {

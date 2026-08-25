@@ -29,7 +29,7 @@ func main() {
 	}
 	fmt.Printf("none\n")
 
-	IPV6:
+IPV6:
 	for _, ip := range ips {
 		if ip.To4() != nil {
 			fmt.Println(ip)
