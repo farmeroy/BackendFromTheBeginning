@@ -151,8 +151,7 @@ func (r *Request) WriteTo(w io.Writer) (n int64, err error) {
 	// <REQUEST BODY>
 
 	// write the request line: like "GET /index.html HTTP/1.1"
-
-	if err := printf("%s: %s\r\n", r.Method, r.Path); err != nil {
+	if err := printf("%s %s HTTP/1.1\r\n", r.Method, r.Path); err != nil {
 		return n, err
 	}
 
@@ -194,8 +193,8 @@ var _, _ fmt.Stringer = (*Request)(nil), (*Response)(nil) // compile time check
 
 var _, _ encoding.TextMarshaler = (*Request)(nil), (*Response)(nil)
 
-func (r *Request) String() string { 
-	b:= new(strings.Builder)
+func (r *Request) String() string {
+	b := new(strings.Builder)
 	r.WriteTo(b) // we take advantage of our WriteTo implementation
 	return b.String()
 }
@@ -232,7 +231,7 @@ func splitLines(s string) []string {
 			return lines
 		}
 		lines = append(lines, s[i:i+j]) // up to but not includeing the \r\n
-		i += j + 2 // skip the \r\n
+		i += j + 2                      // skip the \r\n
 	}
 }
 
@@ -249,6 +248,9 @@ func ParseRequest(raw string) (r Request, err error) {
 		return Request{}, fmt.Errorf("malformed request: should have at least 3 lines")
 	}
 	first := strings.Fields(lines[0])
+	if len(first) < 3 {
+		return Request{}, fmt.Errorf("malformed request: first line %q is malformed", first)
+	}
 	r.Method, r.Path = first[0], first[1]
 	if !strings.HasPrefix(r.Path, "/") {
 		return Request{}, fmt.Errorf("malformed request: path should start with /")
@@ -259,7 +261,7 @@ func ParseRequest(raw string) (r Request, err error) {
 	var foundhost bool
 	var bodyStart int
 	// then we have headers, up until an empty line
-	for i := 1; i < len(lines); i ++ {
+	for i := 1; i < len(lines); i++ {
 		if lines[i] == "" { // empty line
 			bodyStart = i + 1
 			break
@@ -284,7 +286,7 @@ func ParseRequest(raw string) (r Request, err error) {
 func ParseResponse(raw string) (resp *Response, err error) {
 	lines := splitLines(raw)
 	log.Println(lines)
-	
+
 	// http version and status code
 	first := strings.SplitN(lines[0], " ", 3)
 	if !strings.Contains(first[0], "HTTP") {

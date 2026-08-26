@@ -24,7 +24,7 @@ func TestTitleCaseKey(t *testing.T) {
 func TestHTTPRespone(t *testing.T) {
 	for name, tt := range map[string]struct {
 		input string
-		want *shttp.Response
+		want  *shttp.Response
 	}{
 		"200 OK (no body)": {
 			input: "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
@@ -68,6 +68,53 @@ func TestHTTPRespone(t *testing.T) {
 				t.Errorf("ParseResponse(%q) returned error: %v", got.String(), err)
 			} else if !reflect.DeepEqual(got2, got) {
 				t.Errorf("ParseResponse(%q) = %#+v, want %#+v", got.String(), got2, got)
+			}
+		})
+	}
+}
+
+func TestHTTPRequest(t *testing.T) {
+	for name, tt := range map[string]struct {
+		input string
+		want  shttp.Request
+	}{
+		"GET (no body)": {
+			input: "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n",
+			want: shttp.Request{
+				Method: "GET",
+				Path:   "/",
+				Headers: []shttp.Header{
+					{"Host", "www.example.com"},
+				},
+			},
+		},
+		"POST (w/ body)": {
+			input: "POST / HTTP/1.1\r\nHost: www.example.com\r\nContent-Length: 11\r\n\r\nHello World\r\n",
+			want: shttp.Request{
+				Method: "POST",
+				Path:   "/",
+				Headers: []shttp.Header{
+					{"Host", "www.example.com"},
+					{"Content-Length", "11"},
+				},
+				Body: "Hello World",
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := shttp.ParseRequest(tt.input)
+			if err != nil {
+				t.Errorf("ParseRequest(%q) returned error: %v", tt.input, err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseRequest(%q) = %#+v, want %#+v", tt.input, got, tt.want)
+			}
+			got2, err := shttp.ParseRequest(got.String())
+			if err != nil {
+				t.Errorf("ParseRequest(%q) returned error: %v", got.String(), err)
+			}
+			if !reflect.DeepEqual(got, got2) {
+				t.Errorf("ParseRequest(%q) = %+v, want %+v", got.String(), got2, got)
 			}
 		})
 	}
