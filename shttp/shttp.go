@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -67,12 +68,12 @@ func NewResponse(status int, body string) (*Response, error) {
 }
 
 func (resp *Response) WithHeader(key, value string) *Response {
-	resp.Headers = append(resp.Headers, Header{AsTitle(key), value})
+	resp.Headers = append(resp.Headers, Header{AsTitle(key), strings.TrimSpace(value)})
 	return resp
 }
 
 func (r *Request) WithHeader(key, value string) *Request {
-	r.Headers = append(r.Headers, Header{AsTitle(key), value})
+	r.Headers = append(r.Headers, Header{AsTitle(key), strings.TrimSpace(value)})
 	return r
 }
 
@@ -267,7 +268,7 @@ func ParseRequest(raw string) (r Request, err error) {
 		if !ok {
 			return Request{}, fmt.Errorf("malformed request: header %q should be of form 'key: value'", lines[i])
 		}
-		if AsTitle(key) == "Host" { //host header is required
+		if key == "Host" { //host header is required
 			foundhost = true
 		}
 		r.WithHeader(key, val)
@@ -280,4 +281,37 @@ func ParseRequest(raw string) (r Request, err error) {
 	return r, nil
 }
 
-
+func ParseResponse(raw string) (resp *Response, err error) {
+	lines := splitLines(raw)
+	log.Println(lines)
+	
+	// http version and status code
+	first := strings.SplitN(lines[0], " ", 3)
+	if !strings.Contains(first[0], "HTTP") {
+		return nil, fmt.Errorf("malformed response: first line should contain HTTP version")
+	}
+	resp = new(Response)
+	resp.StatusCode, err = strconv.Atoi(first[1])
+	if err != nil {
+		return nil, fmt.Errorf("malformed response: expected status code to be intiger, get %q", first[1])
+	}
+	if first[2] == "" || http.StatusText(resp.StatusCode) != first[2] {
+		log.Printf("missing or incorrect status text for status code %d: expected %q but got %q", resp.StatusCode, http.StatusText(resp.StatusCode), first[2])
+	}
+	var bodyStart int
+	// parse the headers
+	for i := 1; i < len(lines); i++ {
+		log.Println(i, lines[i])
+		if lines[i] == "" { // empty line
+			bodyStart = i + 1
+			break
+		}
+		key, val, ok := strings.Cut(lines[i], ": ")
+		if !ok {
+			return nil, fmt.Errorf("malformed response: header %q should be of form 'key: value'", lines[i])
+		}
+		resp.WithHeader(key, val)
+	}
+	resp.Body = strings.TrimSpace(strings.Join(lines[bodyStart:], "\r\n"))
+	return resp, nil
+}
